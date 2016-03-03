@@ -1,12 +1,16 @@
 package com.github.javiersantos.appupdater;
 
 import android.content.Context;
+import android.support.annotation.DrawableRes;
 import android.support.annotation.NonNull;
+import android.util.Log;
 
+import com.github.javiersantos.appupdater.enums.AppUpdaterError;
 import com.github.javiersantos.appupdater.enums.Display;
 import com.github.javiersantos.appupdater.enums.Duration;
 import com.github.javiersantos.appupdater.enums.UpdateFrom;
 import com.github.javiersantos.appupdater.objects.GitHub;
+import com.github.javiersantos.appupdater.objects.Update;
 
 public class AppUpdater {
     private Context context;
@@ -15,19 +19,22 @@ public class AppUpdater {
     private UpdateFrom updateFrom;
     private Duration duration;
     private GitHub gitHub;
+    private String xmlUrl;
     private Integer showEvery;
     private Boolean showAppUpdated;
     private String titleUpdate, descriptionUpdate, btnUpdate, btnDisable; // Update available
     private String titleNoUpdate, descriptionNoUpdate; // Update not available
+    private int iconResId;
 
     public AppUpdater(Context context) {
-        this.context  = context;
+        this.context = context;
         this.libraryPreferences = new LibraryPreferences(context);
         this.display = Display.DIALOG;
         this.updateFrom = UpdateFrom.GOOGLE_PLAY;
         this.duration = Duration.NORMAL;
         this.showEvery = 1;
         this.showAppUpdated = false;
+        this.iconResId = R.drawable.ic_stat_name;
 
         // Dialog
         this.titleUpdate = context.getResources().getString(R.string.appupdater_update_available);
@@ -54,6 +61,7 @@ public class AppUpdater {
      * @param updateFrom source where the latest update is uploaded. If GITHUB is selected, .setGitHubAndRepo method is required.
      * @return this
      * @see com.github.javiersantos.appupdater.enums.UpdateFrom
+     * @see <a href="https://github.com/javiersantos/AppUpdater/wiki">Additional documentation</a>
      */
     public AppUpdater setUpdateFrom(UpdateFrom updateFrom) {
         this.updateFrom = updateFrom;
@@ -81,6 +89,17 @@ public class AppUpdater {
      */
     public AppUpdater setGitHubUserAndRepo(@NonNull String user, @NonNull String repo) {
         this.gitHub = new GitHub(user, repo);
+        return this;
+    }
+
+    /**
+     * Set the url to the xml file with the latest version info.
+     *
+     * @param xmlUrl file
+     * @return this
+     */
+    public AppUpdater setUpdateXML(@NonNull String xmlUrl) {
+        this.xmlUrl = xmlUrl;
         return this;
     }
 
@@ -173,6 +192,17 @@ public class AppUpdater {
     }
 
     /**
+     * Sets the resource identifier for the small notification icon
+     *
+     * @param iconRes The id of the drawable item
+     * @return this
+     */
+    public AppUpdater setIcon(@DrawableRes int iconRes) {
+        this.iconResId = iconRes;
+        return this;
+    }
+
+    /**
      * Execute AppUpdater in background.
      *
      * @return this
@@ -187,21 +217,21 @@ public class AppUpdater {
      * Execute AppUpdater in background.
      */
     public void start() {
-        UtilsAsync.LatestAppVersion latestAppVersion = new UtilsAsync.LatestAppVersion(context, false, updateFrom, gitHub, new LibraryListener() {
+        UtilsAsync.LatestAppVersion latestAppVersion = new UtilsAsync.LatestAppVersion(context, false, updateFrom, gitHub, xmlUrl, new LibraryListener() {
             @Override
-            public void onSuccess(String version) {
-                if (UtilsLibrary.isUpdateAvailable(UtilsLibrary.getAppInstalledVersion(context), version)) {
+            public void onSuccess(Update update) {
+                if (UtilsLibrary.isUpdateAvailable(UtilsLibrary.getAppInstalledVersion(context), update.getLatestVersion())) {
                     Integer successfulChecks = libraryPreferences.getSuccessfulChecks();
                     if (UtilsLibrary.isAbleToShow(successfulChecks, showEvery)) {
                         switch (display) {
                             case DIALOG:
-                                UtilsDisplay.showUpdateAvailableDialog(context, titleUpdate, getDescriptionUpdate(context, version), btnUpdate, btnDisable, updateFrom, gitHub);
+                                UtilsDisplay.showUpdateAvailableDialog(context, titleUpdate, getDescriptionUpdate(context, update.getLatestVersion(), Display.DIALOG), btnUpdate, btnDisable, updateFrom, update.getUrlToDownload());
                                 break;
                             case SNACKBAR:
-                                UtilsDisplay.showUpdateAvailableSnackbar(context, String.format(context.getResources().getString(R.string.appupdater_update_available_description_snackbar), version), UtilsLibrary.getDurationEnumToBoolean(duration), updateFrom, gitHub);
+                                UtilsDisplay.showUpdateAvailableSnackbar(context, getDescriptionUpdate(context, update.getLatestVersion(), Display.SNACKBAR), UtilsLibrary.getDurationEnumToBoolean(duration), updateFrom, update.getUrlToDownload());
                                 break;
                             case NOTIFICATION:
-                                UtilsDisplay.showUpdateAvailableNotification(context, context.getResources().getString(R.string.appupdater_update_available), String.format(context.getResources().getString(R.string.appupdater_update_available_description_notification), version, UtilsLibrary.getAppName(context)), updateFrom, gitHub);
+                                UtilsDisplay.showUpdateAvailableNotification(context, context.getResources().getString(R.string.appupdater_update_available), getDescriptionUpdate(context, update.getLatestVersion(), Display.NOTIFICATION), updateFrom, update.getUrlToDownload(), iconResId);
                                 break;
                         }
                     }
@@ -212,12 +242,19 @@ public class AppUpdater {
                             UtilsDisplay.showUpdateNotAvailableDialog(context, titleNoUpdate, getDescriptionNoUpdate(context));
                             break;
                         case SNACKBAR:
-                            UtilsDisplay.showUpdateNotAvailableSnackbar(context, context.getResources().getString(R.string.appupdater_update_not_available_description), UtilsLibrary.getDurationEnumToBoolean(duration));
+                            UtilsDisplay.showUpdateNotAvailableSnackbar(context, getDescriptionNoUpdate(context), UtilsLibrary.getDurationEnumToBoolean(duration));
                             break;
                         case NOTIFICATION:
-                            UtilsDisplay.showUpdateNotAvailableNotification(context, context.getResources().getString(R.string.appupdater_update_not_available), String.format(context.getResources().getString(R.string.appupdater_update_not_available_description), UtilsLibrary.getAppName(context)));
+                            UtilsDisplay.showUpdateNotAvailableNotification(context, context.getResources().getString(R.string.appupdater_update_not_available), getDescriptionNoUpdate(context), iconResId);
                             break;
                     }
+                }
+            }
+
+            @Override
+            public void onFailed(AppUpdaterError error) {
+                if (error == AppUpdaterError.UPDATE_VARIES_BY_DEVICE) {
+                    Log.e("AppUpdater", "UpdateFrom.GOOGLE_PLAY isn't valid: update varies by device.");
                 }
             }
         });
@@ -226,15 +263,27 @@ public class AppUpdater {
     }
 
     interface LibraryListener {
-        void onSuccess(String version);
+        void onSuccess(Update update);
+
+        void onFailed(AppUpdaterError error);
     }
 
-    private String getDescriptionUpdate(Context context, String version) {
+    private String getDescriptionUpdate(Context context, String version, Display display) {
         if (descriptionUpdate == null) {
-            return String.format(context.getResources().getString(R.string.appupdater_update_available_description_dialog), version, UtilsLibrary.getAppName(context));
-        } else {
-            return descriptionUpdate;
+            switch (display) {
+                case DIALOG:
+                    return String.format(context.getResources().getString(R.string.appupdater_update_available_description_dialog), version, UtilsLibrary.getAppName(context));
+
+                case SNACKBAR:
+                    return String.format(context.getResources().getString(R.string.appupdater_update_available_description_snackbar), version);
+
+                case NOTIFICATION:
+                    return String.format(context.getResources().getString(R.string.appupdater_update_available_description_notification), version, UtilsLibrary.getAppName(context));
+
+            }
         }
+        return descriptionUpdate;
+
     }
 
     private String getDescriptionNoUpdate(Context context) {

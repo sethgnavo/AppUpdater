@@ -9,7 +9,7 @@
   <a target="_blank" href="http://patreon.com/javiersantos" title="Donate using Patreon"><img src="https://img.shields.io/badge/patreon-donate-yellow.svg" /></a>
 </p>
 
-<p align="center">Android Library that checks for updates on Google Play, GitHub, Amazon or F-Droid. This library notifies your apps' updates by showing a Material dialog, Snackbar or notification.</p>
+<p align="center">Android Library that checks for updates on Google Play, GitHub, Amazon, F-Droid or your own server. This library notifies your apps' updates by showing a Material dialog, Snackbar or notification. Check out the <a href="https://github.com/javiersantos/AppUpdater/wiki">wiki</a>.</p>
 
 ## Sample Project
 You can download the latest sample APK from Google Play:
@@ -29,7 +29,7 @@ repositories {
 And add the library to your module **build.gradle**:
 ```Javascript
 dependencies {
-    compile 'com.github.javiersantos:AppUpdater:1.2'
+    compile 'com.github.javiersantos:AppUpdater:2.0.1'
 }
 ```
 
@@ -52,7 +52,7 @@ AppUpdater appUpdater = new AppUpdater(getActivity());
 appUpdater.start();
 ```
 
-## Customization
+## Customizations ([Wiki](https://github.com/javiersantos/AppUpdater/wiki))
 
 Use the builder and add following:
 ```Java
@@ -71,17 +71,26 @@ Use the builder and add following:
 ```
 
 ```Java
-// (Optional) Provide a source for the updates. 
+// (Optional) Provide a source for the updates.
+// Check out the wiki for more documentation: https://github.com/javiersantos/AppUpdater/wiki
 // Default: UpdateFrom.GOOGLE_PLAY
 .setUpdateFrom(UpdateFrom.GOOGLE_PLAY)
 .setUpdateFrom(UpdateFrom.GITHUB)
 .setUpdateFrom(UpdateFrom.AMAZON)
 .setUpdateFrom(UpdateFrom.FDROID)
+.setUpdateFrom(UpdateFrom.XML)
 ```
 
 ```Java
 // (Required for GITHUB, optional otherwise) Provide the GitHub user and repo where releases are available.
+// Check out the wiki for more documentation: https://github.com/javiersantos/AppUpdater/wiki/UpdateFrom.GITHUB
 .setGitHubUserAndRepo("javiersantos", "AppUpdater")
+```
+
+```Java
+// (Required for XML, optional otherwise) Set the URL to the XML file with the latest version info.
+// Check out the wiki for more documentation: https://github.com/javiersantos/AppUpdater/wiki/UpdateFrom.XML
+.setUpdateXML("https://raw.githubusercontent.com/javiersantos/AppUpdater/master/app/update.xml")
 ```
 
 ```Java
@@ -97,7 +106,7 @@ Use the builder and add following:
 ```
 
 ```Java
-// Customize the dialog title, description and buttons
+// (Optional) Customize the dialog title, description and buttons
 .setDialogTitleWhenUpdateAvailable("Update available")
 .setDialogDescriptionWhenUpdateAvailable("Check out the latest version available of my app!")
 .setDialogButtonUpdate("Update now?")
@@ -106,18 +115,28 @@ Use the builder and add following:
 .setDialogDescriptionWhenUpdateNotAvailable("No update available. Check for updates again later!")
 ```
 
+```Java
+// (Optional) Set a resource identifier for the small notification icon 
+.setIcon(R.drawable.ic_update)
+```
+
 ## Other features
 ### Get the latest update and compare with the installed one (asynchronous)
 ```Java
 AppUpdaterUtils appUpdaterUtils = new AppUpdaterUtils(this)
     //.setUpdateFrom(UpdateFrom.AMAZON)
-    //.setUpdateFrom(UpdateFrom.FDROID)
     //.setUpdateFrom(UpdateFrom.GITHUB)
     //.setGitHubUserAndRepo("javiersantos", "AppUpdater")
-    .withListener(new AppUpdaterUtils.AppUpdaterListener() {
+    //...
+    .withListener(new AppUpdaterUtils.UpdateListener() {
         @Override
-        public void onSuccess(String latestVersion, Boolean isUpdateAvailable) {
-            Log.d("AppUpdater", latestVersion + ", " + Boolean.toString(isUpdateAvailable));
+        public void onSuccess(Update update, Boolean isUpdateAvailable) {
+            Log.d("AppUpdater", update.getLatestVersion() + ", " + update.getUrlToDownload() + ", " + Boolean.toString(isUpdateAvailable));
+        }
+        
+        @Override
+        public void onFailed(AppUpdaterError error) {
+            Log.d("AppUpdater", "Something went wrong");
         });
 appUpdaterUtils.start();
 ```
