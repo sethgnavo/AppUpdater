@@ -16,6 +16,8 @@ import com.github.javiersantos.appupdater.enums.UpdateFrom;
 import java.net.URL;
 
 class UtilsDisplay {
+    
+     private static MaterialDialog materialDialog;
 
     static void showUpdateAvailableDialog(final Context context, String title, String content, String btnPositive, String btnNeutral, final UpdateFrom updateFrom, final URL apk) {
         final LibraryPreferences libraryPreferences = new LibraryPreferences(context);
@@ -115,6 +117,19 @@ class UtilsDisplay {
 
         NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         notificationManager.notify(0, builder.build());
+    }
+    
+    static void showUpdateCheckoutProgressDialog(Context context, String title, String content, MaterialDialog matDialog) {
+        materialDialog = new MaterialDialog.Builder(context)
+                .title(title)
+                .content(content)
+                .progress(true, 0)
+                .show();
+    }
+
+    static void hideUpdateCheckoutProgressDialog(MaterialDialog mDialog) {
+        mDialog = materialDialog;
+        materialDialog.hide();
     }
 
 }
