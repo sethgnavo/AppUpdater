@@ -8,4 +8,6 @@
     <string name="appupdater_btn_update">Update</string>
     <string name="appupdater_btn_disable">Don\'t show again</string>
     <string name="appupdater_btn_dismiss">Dismiss</string>
+    <string name="appupdater_progress_dialog_title">Checking for update</string>
+    <string name="appupdater_progress_dialog_content">Please wait…</string>
 </resources>
